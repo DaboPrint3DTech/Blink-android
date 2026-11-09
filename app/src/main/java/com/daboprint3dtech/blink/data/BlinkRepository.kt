@@ -149,6 +149,21 @@ class BlinkRepository(
         return results
     }
 
+    /** True se tutti i sistemi con un Sync Module risultano armati (null se non ci sono sistemi). */
+    fun allSystemsArmed(): Boolean? {
+        val networks = _homescreen.value?.networks?.takeIf { it.isNotEmpty() } ?: return null
+        return networks.all { it.armed }
+    }
+
+    /** Arma o disarma tutti i sistemi dell'account. */
+    suspend fun setAllSystemsArmed(armed: Boolean) {
+        val networks = refresh(maxAge = Duration.ofMinutes(1)).networks
+        for (network in networks) {
+            if (network.armed != armed) runCatching { api.setSystemArmed(network.id, armed) }
+        }
+        runCatching { refresh() }
+    }
+
     suspend fun setSystemArmed(networkId: Long, armed: Boolean) {
         commandMutex.withLock { api.setSystemArmed(networkId, armed) }
         _homescreen.update { home ->

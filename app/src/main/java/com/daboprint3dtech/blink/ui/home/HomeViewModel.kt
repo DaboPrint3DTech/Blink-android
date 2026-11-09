@@ -7,6 +7,7 @@ import com.daboprint3dtech.blink.data.SnapshotResult
 import com.daboprint3dtech.blink.data.api.BlinkCamera
 import com.daboprint3dtech.blink.data.api.BlinkNetwork
 import com.daboprint3dtech.blink.data.api.Homescreen
+import com.daboprint3dtech.blink.data.prefs.CameraPreferences
 import com.daboprint3dtech.blink.data.settings.AutoRefreshSettings
 import com.daboprint3dtech.blink.ui.components.userMessage
 import kotlinx.coroutines.channels.Channel
@@ -31,6 +32,7 @@ data class HomeUiState(
     val settings: AutoRefreshSettings = AutoRefreshSettings(),
     val attempts: Map<String, Instant> = emptyMap(),
     val lastUpdated: Instant? = null,
+    val cameraPrefs: CameraPreferences = CameraPreferences(),
 )
 
 private data class LocalState(
@@ -57,7 +59,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         local,
         container.autoRefreshStore.settings,
         container.autoRefreshStore.lastAttempts,
-    ) { data, l, settings, attempts ->
+        container.cameraPreferencesStore.preferences,
+    ) { data, l, settings, attempts, prefs ->
         data.copy(
             refreshing = l.refreshing,
             loadError = l.loadError,
@@ -65,6 +68,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             busyCameras = l.busyCameras,
             settings = settings,
             attempts = attempts,
+            cameraPrefs = prefs,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -123,6 +127,10 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 local.update { it.copy(busyNetworks = it.busyNetworks - network.id) }
             }
         }
+    }
+
+    fun toggleFavorite(camera: BlinkCamera) {
+        viewModelScope.launch { container.updateCameraPreferences { it.toggleFavorite(camera.key) } }
     }
 
     fun setMotion(camera: BlinkCamera, enabled: Boolean) {

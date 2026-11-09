@@ -19,17 +19,24 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.BatteryAlert
+import androidx.compose.material.icons.outlined.BatteryStd
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Reorder
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -58,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.daboprint3dtech.blink.data.api.BlinkCamera
 import com.daboprint3dtech.blink.data.api.BlinkNetwork
+import com.daboprint3dtech.blink.data.prefs.CameraOrdering
 import com.daboprint3dtech.blink.data.settings.AutoRefreshPlanner
 import com.daboprint3dtech.blink.data.settings.AutoRefreshSettings
 import com.daboprint3dtech.blink.ui.components.CameraThumbnail
@@ -78,9 +86,12 @@ data class HomeActions(
     val onSnapshotAll: () -> Unit = {},
     val onArm: (BlinkNetwork, Boolean) -> Unit = { _, _ -> },
     val onMotion: (BlinkCamera, Boolean) -> Unit = { _, _ -> },
+    val onToggleFavorite: (BlinkCamera) -> Unit = {},
     val onOpenCamera: (String) -> Unit = {},
     val onOpenClips: () -> Unit = {},
     val onOpenSettings: () -> Unit = {},
+    val onOpenBattery: () -> Unit = {},
+    val onOpenOrganize: () -> Unit = {},
 )
 
 @Composable
@@ -88,6 +99,8 @@ fun HomeScreen(
     onOpenCamera: (String) -> Unit,
     onOpenClips: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenBattery: () -> Unit,
+    onOpenOrganize: () -> Unit,
 ) {
     val vm = appViewModel { HomeViewModel(it) }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -103,9 +116,12 @@ fun HomeScreen(
             onSnapshotAll = vm::snapshotAll,
             onArm = vm::setArmed,
             onMotion = vm::setMotion,
+            onToggleFavorite = vm::toggleFavorite,
             onOpenCamera = onOpenCamera,
             onOpenClips = onOpenClips,
             onOpenSettings = onOpenSettings,
+            onOpenBattery = onOpenBattery,
+            onOpenOrganize = onOpenOrganize,
         ),
     )
 }
@@ -140,8 +156,28 @@ fun HomeContent(
                     IconButton(onClick = { confirmSnapAll = true }, enabled = state.home?.cameras?.isNotEmpty() == true) {
                         Icon(Icons.Outlined.PhotoCamera, contentDescription = "Aggiorna tutte le miniature")
                     }
-                    IconButton(onClick = actions.onOpenClips) { Icon(Icons.Outlined.VideoLibrary, contentDescription = "Clip") }
-                    IconButton(onClick = actions.onOpenSettings) { Icon(Icons.Outlined.Settings, contentDescription = "Impostazioni") }
+                    IconButton(onClick = actions.onOpenBattery) { Icon(Icons.Outlined.BatteryStd, contentDescription = "Stato batterie") }
+                    var menu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = "Altro") }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Organizza telecamere") },
+                                leadingIcon = { Icon(Icons.Outlined.Reorder, contentDescription = null) },
+                                onClick = { menu = false; actions.onOpenOrganize() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Clip") },
+                                leadingIcon = { Icon(Icons.Outlined.VideoLibrary, contentDescription = null) },
+                                onClick = { menu = false; actions.onOpenClips() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Impostazioni") },
+                                leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                                onClick = { menu = false; actions.onOpenSettings() },
+                            )
+                        }
+                    }
                 },
             )
         },
@@ -168,17 +204,33 @@ fun HomeContent(
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         AutoRefreshBanner(state.settings, home.cameras, state, now, actions.onOpenSettings)
                     }
+                    val prefs = state.cameraPrefs
+                    val favoritesOnTop = prefs.favoritesFirst && home.cameras.any { prefs.isFavorite(it.key) }
+                    if (favoritesOnTop) {
+                        val favorites = CameraOrdering.ordered(home.cameras.filter { prefs.isFavorite(it.key) }, prefs)
+                        item(key = "fav-header", span = { GridItemSpan(maxLineSpan) }) {
+                            SectionLabel("Preferite", Icons.Filled.Star)
+                        }
+                        items(favorites, key = { "fav-${it.key}" }) { camera ->
+                            CameraCard(camera, state, now, thumbnailFile, actions)
+                        }
+                    }
                     val networkIds = home.networks.map { it.id }.toSet()
                     for (network in home.networks) {
+                        val cams = CameraOrdering.ordered(home.camerasOf(network.id), prefs)
+                            .filter { !favoritesOnTop || !prefs.isFavorite(it.key) }
+                        if (cams.isEmpty() && favoritesOnTop) continue
                         item(key = "net-${network.id}", span = { GridItemSpan(maxLineSpan) }) {
                             NetworkHeader(network, busy = network.id in state.busyNetworks, onArm = { actions.onArm(network, it) })
                         }
-                        items(home.camerasOf(network.id), key = { it.key }) { camera ->
+                        items(cams, key = { it.key }) { camera ->
                             CameraCard(camera, state, now, thumbnailFile, actions)
                         }
                     }
                     // Dispositivi senza sistema associato (raro)
-                    items(home.cameras.filter { it.networkId !in networkIds }, key = { it.key }) { camera ->
+                    val orphans = CameraOrdering.ordered(home.cameras.filter { it.networkId !in networkIds }, prefs)
+                        .filter { !favoritesOnTop || !prefs.isFavorite(it.key) }
+                    items(orphans, key = { it.key }) { camera ->
                         CameraCard(camera, state, now, thumbnailFile, actions)
                     }
                 }
@@ -211,6 +263,18 @@ fun rememberNow(): Instant {
         }
     }
     return now
+}
+
+@Composable
+private fun SectionLabel(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = StatusColors.Warning, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable
@@ -323,7 +387,18 @@ private fun CameraCard(
                     AutoRefreshSettings.formatInterval(state.settings.intervalFor(camera.key)),
                     Color.Black.copy(alpha = 0.6f),
                     icon = Icons.Outlined.Autorenew,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                )
+            }
+            val favorite = state.cameraPrefs.isFavorite(camera.key)
+            IconButton(
+                onClick = { actions.onToggleFavorite(camera) },
+                modifier = Modifier.align(Alignment.TopEnd).padding(2.dp),
+            ) {
+                Icon(
+                    if (favorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (favorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti",
+                    tint = if (favorite) StatusColors.Warning else Color.White,
                 )
             }
             Column(
