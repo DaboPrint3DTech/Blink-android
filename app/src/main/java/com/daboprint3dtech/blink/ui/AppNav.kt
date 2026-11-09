@@ -16,7 +16,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.daboprint3dtech.blink.data.auth.AuthState
+import com.daboprint3dtech.blink.ui.battery.BatteryScreen
 import com.daboprint3dtech.blink.ui.camera.CameraScreen
+import com.daboprint3dtech.blink.ui.cameras.OrganizeScreen
 import com.daboprint3dtech.blink.ui.clips.ClipsScreen
 import com.daboprint3dtech.blink.ui.components.appContainer
 import com.daboprint3dtech.blink.ui.home.HomeScreen
@@ -24,39 +26,62 @@ import com.daboprint3dtech.blink.ui.login.LoginScreen
 import com.daboprint3dtech.blink.ui.player.PlayerScreen
 import com.daboprint3dtech.blink.ui.settings.SettingsScreen
 
+/** Destinazione aperta da un tap esterno (widget, notifica). */
+sealed interface DeepLink {
+    data class Camera(val key: String) : DeepLink
+    data object Battery : DeepLink
+}
+
 private object Routes {
     const val HOME = "home"
     const val CAMERA = "camera/{key}"
     const val CLIPS = "clips"
     const val PLAYER = "player/{id}"
     const val SETTINGS = "settings"
+    const val BATTERY = "battery"
+    const val ORGANIZE = "organize"
 
     fun camera(key: String) = "camera/$key"
     fun player(id: Long) = "player/$id"
 }
 
 @Composable
-fun BlinkAppRoot() {
+fun BlinkAppRoot(deepLink: DeepLink? = null, onDeepLinkHandled: () -> Unit = {}) {
     val container = appContainer()
     val auth by container.auth.state.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         when (auth) {
             AuthState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             AuthState.LoggedOut -> LoginScreen()
-            is AuthState.LoggedIn -> MainNavHost()
+            is AuthState.LoggedIn -> MainNavHost(deepLink, onDeepLinkHandled)
         }
     }
 }
 
 @Composable
-private fun MainNavHost() {
+private fun MainNavHost(deepLink: DeepLink?, onDeepLinkHandled: () -> Unit) {
     val nav = rememberNavController()
+    androidx.compose.runtime.LaunchedEffect(deepLink) {
+        when (val d = deepLink) {
+            is DeepLink.Camera -> {
+                nav.navigate(Routes.camera(d.key)) { launchSingleTop = true }
+                onDeepLinkHandled()
+            }
+            DeepLink.Battery -> {
+                nav.navigate(Routes.BATTERY) { launchSingleTop = true }
+                onDeepLinkHandled()
+            }
+            null -> Unit
+        }
+    }
     NavHost(navController = nav, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
             HomeScreen(
                 onOpenCamera = { nav.navigate(Routes.camera(it)) },
                 onOpenClips = { nav.navigate(Routes.CLIPS) },
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                onOpenBattery = { nav.navigate(Routes.BATTERY) },
+                onOpenOrganize = { nav.navigate(Routes.ORGANIZE) },
             )
         }
         composable(Routes.CAMERA, arguments = listOf(navArgument("key") { type = NavType.StringType })) { entry ->
@@ -74,6 +99,12 @@ private fun MainNavHost() {
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { nav.popBackStack() })
+        }
+        composable(Routes.BATTERY) {
+            BatteryScreen(onBack = { nav.popBackStack() })
+        }
+        composable(Routes.ORGANIZE) {
+            OrganizeScreen(onBack = { nav.popBackStack() })
         }
     }
 }

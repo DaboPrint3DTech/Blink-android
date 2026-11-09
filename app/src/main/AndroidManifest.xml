@@ -7,6 +7,8 @@
     <!-- Permette di chiedere l'esclusione dall'ottimizzazione batteria, così gli
          aggiornamenti automatici delle miniature in background sono più puntuali. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Notifiche di batteria scarica (richiesta a runtime su Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".BlinkApp"
@@ -30,6 +32,30 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Widget home screen con le miniature delle telecamere preferite. -->
+        <receiver
+            android:name=".widget.BlinkWidgetReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/blink_widget_info" />
+        </receiver>
+
+        <!-- Tile delle impostazioni rapide per armare/disarmare. -->
+        <service
+            android:name=".tile.ArmTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_shield"
+            android:label="@string/tile_arm"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
     </application>
 </manifest>

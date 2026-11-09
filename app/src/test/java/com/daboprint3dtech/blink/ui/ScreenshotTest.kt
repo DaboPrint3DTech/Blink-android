@@ -119,6 +119,7 @@ class ScreenshotTest {
             settings = settings,
             attempts = mapOf("camera-11" to now.minus(Duration.ofMinutes(3))),
             lastUpdated = now.minusSeconds(60),
+            cameraPrefs = com.daboprint3dtech.blink.data.prefs.CameraPreferences(favorites = setOf("camera-11")),
         )
         compose.setContent {
             BlinkTheme { HomeContent(state, SnackbarHostState(), { files.getValue(it) }, HomeActions(), now) }
@@ -156,5 +157,41 @@ class ScreenshotTest {
             BlinkTheme { LoginContent(LoginUiState(email = "utente@example.com", awaitingCode = true, code = "1234"), actions) }
         }
         capture("login-2fa")
+    }
+
+    @Test
+    @Config(qualifiers = "w400dp-h1200dp-xhdpi")
+    fun battery() {
+        val cams = listOf(
+            cam(12, "Giardino", 42, battery = "low").copy(batteryLevel = 1),
+            cam(13, "Retro", 20).copy(batteryLevel = 2),
+            cam(11, "Ingresso", 3).copy(batteryLevel = 3),
+            cam(21, "Campanello", 5, kind = DeviceKind.DOORBELL, network = 2, battery = null).copy(batteryLevel = null),
+        )
+        val state = com.daboprint3dtech.blink.ui.battery.BatteryUiState(
+            cameras = cams,
+            prefs = com.daboprint3dtech.blink.data.prefs.CameraPreferences(batteryAlertEnabled = true, batteryAlertLevel = 1),
+        )
+        compose.setContent {
+            BlinkTheme { com.daboprint3dtech.blink.ui.battery.BatteryContent(state, com.daboprint3dtech.blink.ui.battery.BatteryActions()) }
+        }
+        capture("battery")
+    }
+
+    @Test
+    @Config(qualifiers = "w400dp-h1200dp-xhdpi")
+    fun organize() {
+        val cams = listOf(cam(11, "Ingresso", 3), cam(12, "Giardino", 42), cam(13, "Retro", 20), cam(21, "Salotto", 12, kind = DeviceKind.MINI, network = 2))
+        val state = com.daboprint3dtech.blink.ui.cameras.OrganizeUiState(
+            cameras = cams,
+            prefs = com.daboprint3dtech.blink.data.prefs.CameraPreferences(
+                order = listOf("camera-13", "camera-11", "camera-12", "mini-21"),
+                favorites = setOf("camera-13"),
+            ),
+        )
+        compose.setContent {
+            BlinkTheme { com.daboprint3dtech.blink.ui.cameras.OrganizeContent(state, com.daboprint3dtech.blink.ui.cameras.OrganizeActions()) }
+        }
+        capture("organize")
     }
 }

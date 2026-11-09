@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Blink Cam</string>
+    <string name="widget_description">Miniature delle telecamere Blink preferite</string>
+    <string name="tile_arm">Blink: Arma/Disarma</string>
+    <string name="widget_loading">Blink Cam…</string>
 </resources>

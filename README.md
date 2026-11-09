@@ -8,9 +8,11 @@ App Android **non ufficiale** per controllare le telecamere di casa Blink, con i
 possibilità di **aggiornare automaticamente le miniature a intervalli configurabili**.
 
 <p>
-  <img src="docs/screenshots/home.png" width="250" alt="Schermata principale">
-  <img src="docs/screenshots/settings.png" width="250" alt="Impostazioni aggiornamento automatico">
-  <img src="docs/screenshots/login-2fa.png" width="250" alt="Login con verifica in due passaggi">
+  <img src="docs/screenshots/home.png" width="230" alt="Schermata principale con preferiti">
+  <img src="docs/screenshots/battery.png" width="230" alt="Stato batterie">
+  <img src="docs/screenshots/organize.png" width="230" alt="Organizza e preferiti">
+  <img src="docs/screenshots/settings.png" width="230" alt="Impostazioni aggiornamento automatico">
+  <img src="docs/screenshots/login-2fa.png" width="230" alt="Login con verifica in due passaggi">
 </p>
 
 ## Funzionalità
@@ -27,6 +29,18 @@ Come l'app Blink:
   temperatura, firmware, **registrazione di una clip** e clip recenti.
 - **Clip**: elenco per periodo (24 h / 7 / 30 / 60 giorni), filtro per telecamera, riproduzione ed eliminazione.
 - Supporta telecamere con Sync Module (Outdoor, Indoor, XT…), **Blink Mini** e **Video Doorbell**.
+
+Funzioni aggiuntive:
+
+- **Widget in home screen**: le miniature delle telecamere preferite direttamente sulla schermata del
+  telefono, con pulsante per aggiornarle; si aggiorna da solo quando gira l'aggiornamento automatico.
+  Le miniature mostrate restano visibili anche se l'app è chiusa (vengono lette dalla cache su disco).
+- **Tile delle impostazioni rapide**: nel menu a tendina di Android, un riquadro che arma/disarma al volo
+  tutti i sistemi e ne mostra lo stato.
+- **Stato batterie**: una schermata con il livello di tutte le telecamere (dalla più scarica), Wi-Fi e
+  temperatura, e una **notifica** quando una scende sotto la soglia scelta.
+- **Preferiti e ordine**: contrassegna le telecamere con la stella (compaiono in cima) e riordinale a piacere;
+  l'ordine vale anche per il widget.
 
 In più — **aggiornamento automatico delle miniature**:
 
@@ -80,7 +94,10 @@ La build *release* è minificata con R8 e firmata con la chiave di debug, così 
 | `data/settings` | Impostazioni dell'aggiornamento automatico e `AutoRefreshPlanner` (logica pura e testata) |
 | `data/thumbs` | Cache su disco delle miniature |
 | `work` | `AutoRefreshEngine`, worker WorkManager, scheduler e ciclo in primo piano |
-| `ui` | Schermate Jetpack Compose (login, home, telecamera, clip, player, impostazioni) |
+| `data/prefs` | Preferenze telecamere (ordine, preferiti, soglia batteria) e logica di ordinamento |
+| `ui` | Schermate Jetpack Compose (login, home, telecamera, clip, player, impostazioni, batterie, organizza) |
+| `widget` | Widget home screen (Glance) e snapshot su disco che legge |
+| `tile` | Tile delle impostazioni rapide per armare/disarmare |
 
 ## Limiti noti
 

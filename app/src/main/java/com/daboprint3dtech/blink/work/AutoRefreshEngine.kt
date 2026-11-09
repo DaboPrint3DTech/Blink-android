@@ -43,6 +43,8 @@ class AutoRefreshEngine(
     private val store: AutoRefreshStore,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     private val now: () -> Instant = Instant::now,
+    /** Eseguito al termine di ogni giro (es. notifica batteria, aggiornamento widget). */
+    private val afterRun: suspend () -> Unit = {},
 ) {
     private val mutex = Mutex()
 
@@ -104,6 +106,7 @@ class AutoRefreshEngine(
             )
         }
         _nextRunAt.value = next
+        runCatching { afterRun() }
         next
     }
 
