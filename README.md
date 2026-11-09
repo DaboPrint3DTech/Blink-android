@@ -2,7 +2,7 @@
 
 <img src="docs/icon.png" width="96" align="right" alt="Icona Blink Cam">
 
-Un progetto **DaboPrint3D** — *Design & Printing* · [canale YouTube DaboPrint3D](https://www.youtube.com/results?search_query=DaboPrint3D)
+Un progetto **DaboPrint3D** — *Design & Printing* · [canale YouTube DaboPrint3D](https://www.youtube.com/@daboPrint3d)
 
 App Android **non ufficiale** per controllare le telecamere di casa Blink, con in più la
 possibilità di **aggiornare automaticamente le miniature a intervalli configurabili**.
@@ -102,6 +102,6 @@ python3 tools/icon/gen.py /tmp/anteprime app/src/main/res
 
 ## Autore
 
-Realizzato da **DaboPrint3D** — seguimi sul [canale YouTube DaboPrint3D](https://www.youtube.com/results?search_query=DaboPrint3D).
+Realizzato da **DaboPrint3D** — seguimi sul [canale YouTube DaboPrint3D](https://www.youtube.com/@daboPrint3d).
 
 Progetto non affiliato né approvato da Blink o Amazon.
