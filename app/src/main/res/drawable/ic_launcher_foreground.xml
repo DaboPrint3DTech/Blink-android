@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icona: videocamera stilizzata con freccia circolare di aggiornamento -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- corpo videocamera -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M34,40h30a4,4 0,0 1,4 4v20a4,4 0,0 1,-4 4h-30a4,4 0,0 1,-4 -4v-20a4,4 0,0 1,4 -4z" />
+    <!-- obiettivo laterale -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M70,50l10,-7v22l-10,-7z" />
+    <!-- lente -->
+    <path
+        android:fillColor="#FF0B6BCB"
+        android:pathData="M49,54m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M49,54m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+</vector>
