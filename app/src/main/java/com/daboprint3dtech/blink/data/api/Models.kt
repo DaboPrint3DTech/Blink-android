@@ -54,7 +54,8 @@ data class BlinkCamera(
     /** Chiave univoca e stabile, usata per cache e impostazioni. */
     val key: String get() = "${kind.name.lowercase(Locale.ROOT)}-$id"
 
-    val isOnline: Boolean get() = status == null || status.lowercase(Locale.ROOT) in ONLINE_STATES
+    /** Solo uno stato esplicitamente "offline" esclude la telecamera (Blink usa anche "done", "online", ...). */
+    val isOnline: Boolean get() = status?.lowercase(Locale.ROOT)?.contains("offline") != true
 
     val isLowBattery: Boolean get() = batteryState?.lowercase(Locale.ROOT) == "low"
 
@@ -63,10 +64,6 @@ data class BlinkCamera(
 
     /** Momento in cui è stata acquisita la miniatura attuale (se ricavabile dall'URL). */
     val thumbnailTime: Instant? get() = BlinkUrls.thumbnailTimestamp(thumbnailPath)
-
-    companion object {
-        private val ONLINE_STATES = setOf("online", "done")
-    }
 }
 
 data class Homescreen(

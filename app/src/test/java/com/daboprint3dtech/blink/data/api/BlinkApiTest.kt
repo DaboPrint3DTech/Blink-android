@@ -22,6 +22,7 @@ class BlinkApiTest {
     private lateinit var auth: AuthManager
     private val requests = CopyOnWriteArrayList<String>()
     private var busyResponses = 0
+    private var rateLimited = 0
     private var commandPolls = 0
     private var validToken = "AT"
 
@@ -39,9 +40,16 @@ class BlinkApiTest {
                 if (request.getHeader("Authorization") != "Bearer $validToken") return MockResponse().setResponseCode(401)
                 return when {
                     path == "/api/v3/accounts/4242/homescreen" -> MockResponse().setBody(HOMESCREEN_JSON)
-                    path == "/network/2001/camera/4001/thumbnail" ->
-                        if (busyResponses-- > 0) MockResponse().setResponseCode(409).setBody("""{"message":"System is busy","code":307}""")
-                        else MockResponse().setBody("""{"id":99,"network_id":2001,"command":"thumbnail","complete":false}""")
+                    path == "/network/2001/camera/4001/thumbnail" -> when {
+                        busyResponses-- > 0 -> MockResponse().setResponseCode(409).setBody("""{"message":"System is busy","code":307}""")
+                        rateLimited-- > 0 -> MockResponse().setResponseCode(429).setBody("""{"message":"Too many requests"}""")
+                        else -> MockResponse().setBody("""{"id":99,"network_id":2001,"command":"thumbnail","complete":false}""")
+                    }
+                    path == "/network/2001/camera/4002/thumbnail" -> MockResponse().setBody("""{"id":98,"network_id":2001}""")
+                    path == "/network/2001/command/98" -> {
+                        commandPolls++
+                        MockResponse().setBody("""{"complete":false,"status_code":902}""") // fallito: non più in corso
+                    }
                     path == "/network/2001/command/99" ->
                         MockResponse().setBody(if (++commandPolls < 3) """{"complete":false,"status_code":908}""" else """{"complete":true,"status_code":908}""")
                     path == "/api/v1/accounts/4242/networks/2002/owls/5001/config" -> MockResponse().setBody("{}")
@@ -83,6 +91,19 @@ class BlinkApiTest {
         api.requestThumbnail(camera)
         assertEquals(3, requests.count { it.startsWith("POST /network/2001/camera/4001/thumbnail") })
         assertEquals(3, commandPolls)
+    }
+
+    @Test
+    fun `troppe richieste viene ritentato`() = runTest {
+        rateLimited = 2
+        api.requestThumbnail(api.homescreen().camera("camera-4001")!!)
+        assertEquals(3, requests.count { it.startsWith("POST /network/2001/camera/4001/thumbnail") })
+    }
+
+    @Test
+    fun `comando non piu in corso non blocca l attesa`() = runTest {
+        api.requestThumbnail(api.homescreen().camera("camera-4002")!!)
+        assertEquals(1, commandPolls)
     }
 
     @Test

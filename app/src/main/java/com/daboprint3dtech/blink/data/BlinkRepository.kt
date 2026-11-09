@@ -5,6 +5,7 @@ import com.daboprint3dtech.blink.data.api.BlinkCamera
 import com.daboprint3dtech.blink.data.api.Clip
 import com.daboprint3dtech.blink.data.api.Homescreen
 import com.daboprint3dtech.blink.data.thumbs.ThumbnailCache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -35,7 +36,11 @@ class BlinkRepository(
     private val api: BlinkApi,
     val thumbnails: ThumbnailCache,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val thumbnailSettleDelayMs: Long = 3_000,
+    /**
+     * Pause tra un controllo e l'altro mentre si aspetta la nuova miniatura (~60 s in totale):
+     * le telecamere a batteria possono impiegare decine di secondi a svegliarsi e caricarla.
+     */
+    private val settleDelaysMs: List<Long> = listOf(3_000, 4_000, 5_000, 8_000, 10_000, 15_000, 15_000),
 ) {
     private val _homescreen = MutableStateFlow<Homescreen?>(null)
     val homescreen: StateFlow<Homescreen?> = _homescreen.asStateFlow()
@@ -86,9 +91,16 @@ class BlinkRepository(
 
     /**
      * Scatta nuove miniature per più telecamere, una alla volta (lo stesso Sync Module
-     * accetta un comando per volta), poi ricarica lo stato e scarica le nuove immagini.
+     * accetta un comando per volta), poi ricarica lo stato finché le nuove immagini non
+     * compaiono e le scarica.
+     *
+     * [beforeCommand] viene chiamato subito prima di inviare il comando a ogni telecamera:
+     * se l'operazione viene interrotta, le telecamere non ancora raggiunte non risultano tentate.
      */
-    suspend fun snapshot(cameras: List<BlinkCamera>): Map<String, SnapshotResult> {
+    suspend fun snapshot(
+        cameras: List<BlinkCamera>,
+        beforeCommand: suspend (BlinkCamera) -> Unit = {},
+    ): Map<String, SnapshotResult> {
         if (cameras.isEmpty()) return emptyMap()
         val keys = cameras.map { it.key }.toSet()
         _snapshotsInProgress.update { it + keys }
@@ -97,16 +109,28 @@ class BlinkRepository(
             val results = mutableMapOf<String, SnapshotResult>()
             commandMutex.withLock {
                 for (camera in cameras) {
-                    runCatching { api.requestThumbnail(camera) }
-                        .onFailure { results[camera.key] = SnapshotResult.Failed(it) }
+                    beforeCommand(camera)
+                    try {
+                        api.requestThumbnail(camera)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        results[camera.key] = SnapshotResult.Failed(e)
+                    }
                 }
             }
             val pending = keys - results.keys
             // Dopo il completamento del comando la miniatura nuova può comparire con qualche secondo di ritardo.
             var changed = emptySet<String>()
-            for (attempt in 0 until 3) {
-                if (attempt > 0) delay(thumbnailSettleDelayMs)
-                val home = runCatching { refresh() }.getOrNull() ?: continue
+            for (attempt in 0..settleDelaysMs.size) {
+                if (attempt > 0) delay(settleDelaysMs[attempt - 1])
+                val home = try {
+                    refresh()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    continue
+                }
                 changed = pending.filter { key -> home.camera(key)?.thumbnailPath != before[key] }.toSet()
                 if (changed.size == pending.size) break
             }

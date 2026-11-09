@@ -237,7 +237,7 @@ private fun AutoRefreshBanner(
     onOpenSettings: () -> Unit,
 ) {
     val included = cameras.filter { settings.isIncluded(it.key) }
-    val next = included.minOfOrNull { AutoRefreshPlanner.nextDueAt(it, settings, state.attempts) }
+    val next = included.minOfOrNull { AutoRefreshPlanner.nextDueAt(it, settings, state.attempts, now) }
     Card(
         onClick = onOpenSettings,
         colors = CardDefaults.cardColors(

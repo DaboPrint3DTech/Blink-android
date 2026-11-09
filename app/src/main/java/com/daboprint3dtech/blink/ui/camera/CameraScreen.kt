@@ -240,7 +240,7 @@ private fun AutoRefreshSection(
         icon = Icons.Outlined.Schedule,
     )
     if (settings.enabled && config.included) {
-        val next = AutoRefreshPlanner.nextDueAt(camera, settings, state.attempts)
+        val next = AutoRefreshPlanner.nextDueAt(camera, settings, state.attempts, now)
         val nextText = if (next.isAfter(now)) upcomingTime(next, now) else "al prossimo controllo"
         val extra = when {
             !camera.isOnline -> " (telecamera offline: verrà saltata)"

@@ -1,5 +1,9 @@
 # Blink Cam (Blink-android)
 
+<img src="docs/icon.png" width="96" align="right" alt="Icona Blink Cam">
+
+Un progetto **DaboPrint3D** — *Design & Printing* · [canale YouTube DaboPrint3D](https://www.youtube.com/results?search_query=DaboPrint3D)
+
 App Android **non ufficiale** per controllare le telecamere di casa Blink, con in più la
 possibilità di **aggiornare automaticamente le miniature a intervalli configurabili**.
 
@@ -86,5 +90,18 @@ La build *release* è minificata con R8 e firmata con la chiave di debug, così 
   termini di servizio Blink.
 - **Visione live** non disponibile: usa un protocollo proprietario (immis) non implementato.
 - **Notifiche push** di movimento non disponibili (arrivano solo all'app ufficiale).
+
+## Icona
+
+L'icona (una "b" turchese con la mano col guanto arancione del logo DaboPrint3D) è disegnata in vettoriale
+da `tools/icon/gen.py`, che genera i drawable in `app/src/main/res/drawable/ic_launcher_*.xml`:
+
+```bash
+python3 tools/icon/gen.py /tmp/anteprime app/src/main/res
+```
+
+## Autore
+
+Realizzato da **DaboPrint3D** — seguimi sul [canale YouTube DaboPrint3D](https://www.youtube.com/results?search_query=DaboPrint3D).
 
 Progetto non affiliato né approvato da Blink o Amazon.

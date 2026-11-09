@@ -90,7 +90,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     fun snapshot(camera: BlinkCamera) {
         viewModelScope.launch {
-            when (val r = repo.snapshot(camera)) {
+            when (val r = container.launchDetached { repo.snapshot(camera) }.await()) {
                 SnapshotResult.Updated -> _messages.send("${camera.name}: miniatura aggiornata")
                 SnapshotResult.NotChanged -> _messages.send("${camera.name}: comando inviato, la miniatura arriverà a breve")
                 is SnapshotResult.Failed -> _messages.send("${camera.name}: ${r.error.userMessage()}")
@@ -103,7 +103,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
         if (cameras.isEmpty()) return
         viewModelScope.launch {
             _messages.send("Aggiornamento di ${cameras.size} miniature in corso…")
-            val results = repo.snapshot(cameras)
+            val results = container.launchDetached { repo.snapshot(cameras) }.await()
             val failed = results.count { it.value is SnapshotResult.Failed }
             _messages.send(
                 if (failed == 0) "Miniature aggiornate" else "Miniature aggiornate, $failed non riuscite",

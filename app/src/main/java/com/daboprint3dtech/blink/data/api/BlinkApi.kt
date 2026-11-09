@@ -27,6 +27,7 @@ class BlinkApi(
     private val commandPollIntervalMs: Long = 1_000,
     private val busyRetryDelayMs: Long = 5_000,
     private val commandTimeoutMs: Long = 60_000,
+    private val commandWaitMs: Long = 45_000,
 ) {
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
@@ -140,7 +141,7 @@ class BlinkApi(
         val json = parseJsonObject(bytes.toString(Charsets.UTF_8))
         if (code in 200..299) return json ?: JsonObject(emptyMap())
         val message = json?.str("message") ?: "Errore del server Blink"
-        if (isBusy(json)) throw BlinkBusyException(message)
+        if (code == 429 || isBusy(json)) throw BlinkBusyException(message)
         throw BlinkApiException(code, "$message (HTTP $code)")
     }
 
@@ -185,19 +186,32 @@ class BlinkApi(
         }
         val commandId = response.long("id") ?: response.long("command_id")
         val networkId = response.long("network_id")
-        if (commandId != null && networkId != null) waitForCommand(networkId, commandId, start)
+        if (commandId != null && networkId != null) waitForCommand(networkId, commandId)
         return response
     }
 
-    private suspend fun waitForCommand(networkId: Long, commandId: Long, start: Long) {
-        while (System.currentTimeMillis() - start < commandTimeoutMs) {
+    /**
+     * Attende il completamento del comando (come blinkpy): si ferma quando `complete` è true
+     * oppure quando `status_code` non è più 908 (comando in corso). In caso di timeout si
+     * prosegue comunque: il comando può completarsi più tardi.
+     */
+    private suspend fun waitForCommand(networkId: Long, commandId: Long) {
+        val start = System.currentTimeMillis()
+        while (System.currentTimeMillis() - start < commandWaitMs) {
             val status = runCatching {
                 getJson { s -> "${base(s)}/network/$networkId/command/$commandId" }
             }.getOrNull()
-            if (status?.bool("complete") == true) return
+            if (status != null) {
+                if (status.bool("complete") == true) return
+                val code = status.int("status_code")
+                if (code != null && code != COMMAND_IN_PROGRESS) return
+            }
             delay(commandPollIntervalMs)
         }
-        // Timeout: il comando potrebbe comunque andare a buon fine più tardi; non è un errore bloccante.
+    }
+
+    private companion object {
+        const val COMMAND_IN_PROGRESS = 908
     }
 
     private fun isBusy(json: JsonObject?): Boolean {

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,8 +65,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.daboprint3dtech.blink.BuildConfig
 import com.daboprint3dtech.blink.data.api.BlinkCamera
 import com.daboprint3dtech.blink.data.settings.ArmFilter
+import com.daboprint3dtech.blink.data.settings.AutoRefreshPlanner
 import com.daboprint3dtech.blink.data.settings.AutoRefreshSettings
 import com.daboprint3dtech.blink.ui.components.ConfirmDialog
+import com.daboprint3dtech.blink.ui.components.DABOPRINT3D_YOUTUBE_URL
+import com.daboprint3dtech.blink.ui.components.openUrl
 import com.daboprint3dtech.blink.ui.components.IntervalDialog
 import com.daboprint3dtech.blink.ui.components.ListDivider
 import com.daboprint3dtech.blink.ui.components.SectionHeader
@@ -94,6 +98,7 @@ data class SettingsActions(
     val onRunNow: () -> Unit = {},
     val onLogout: () -> Unit = {},
     val onRequestBattery: () -> Unit = {},
+    val onOpenYoutube: () -> Unit = {},
 )
 
 @Composable
@@ -120,6 +125,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             onRunNow = vm::refreshIncludedNow,
             onLogout = vm::logout,
             onRequestBattery = { requestIgnoreBatteryOptimizations(context) },
+            onOpenYoutube = { openUrl(context, DABOPRINT3D_YOUTUBE_URL) },
         ),
     )
 }
@@ -253,6 +259,8 @@ fun SettingsContent(
                 CameraRefreshRow(
                     camera = camera,
                     settings = s,
+                    attempts = state.attempts,
+                    now = now,
                     onIncluded = { actions.onCameraIncluded(camera.key, it) },
                     onEditInterval = { dialog = SettingsDialog.CameraInterval(camera) },
                 )
@@ -279,6 +287,13 @@ fun SettingsContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            ValueRow(
+                title = "Un progetto DaboPrint3D",
+                subtitle = "Design & Printing · guarda il canale YouTube",
+                value = "YouTube",
+                onClick = actions.onOpenYoutube,
+                icon = Icons.Outlined.SmartDisplay,
+            )
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -352,6 +367,12 @@ private fun StatusCard(
                     Text("Errori: ${last.failed.joinToString()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
                 if (last.skipped.isNotEmpty()) Text("Saltate: ${last.skipped.joinToString()}", style = MaterialTheme.typography.bodySmall)
+                if (last.notDue.isNotEmpty()) {
+                    Text(
+                        "Non ancora da aggiornare: " + last.notDue.joinToString { (name, at) -> "$name (${upcomingTime(at, now)})" },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             } else {
                 Text("Nessun aggiornamento automatico eseguito da quando l'app è aperta", style = MaterialTheme.typography.bodyMedium)
             }
@@ -392,6 +413,8 @@ private fun StatusCard(
 private fun CameraRefreshRow(
     camera: BlinkCamera,
     settings: AutoRefreshSettings,
+    attempts: Map<String, java.time.Instant>,
+    now: java.time.Instant,
     onIncluded: (Boolean) -> Unit,
     onEditInterval: () -> Unit,
 ) {
@@ -413,6 +436,20 @@ private fun CameraRefreshRow(
                 else -> "Ogni $interval · tocca per cambiare"
             }
             Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (settings.enabled && config.included) {
+                val next = AutoRefreshPlanner.nextDueAt(camera, settings, attempts, now)
+                val status = when {
+                    !camera.isOnline -> " · offline, verrà saltata"
+                    settings.skipLowBattery && camera.isLowBattery -> " · batteria scarica, verrà saltata"
+                    else -> ""
+                }
+                Text(
+                    "Miniatura ${relativeTime(camera.thumbnailTime, now)} · prossima " +
+                        (if (next.isAfter(now)) upcomingTime(next, now) else "al prossimo controllo") + status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
         Switch(checked = config.included, onCheckedChange = onIncluded)
     }
