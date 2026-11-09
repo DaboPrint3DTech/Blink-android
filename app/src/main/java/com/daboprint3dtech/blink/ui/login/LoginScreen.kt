@@ -1,6 +1,13 @@
 package com.daboprint3dtech.blink.ui.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.painterResource
+import com.daboprint3dtech.blink.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -45,7 +51,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.daboprint3dtech.blink.ui.components.DABOPRINT3D_YOUTUBE_URL
 import com.daboprint3dtech.blink.ui.components.appViewModel
+import com.daboprint3dtech.blink.ui.components.openUrl
+import androidx.compose.ui.platform.LocalContext
 
 /** Azioni della schermata di login. */
 interface LoginActions {
@@ -77,12 +86,7 @@ fun LoginContent(state: LoginUiState, vm: LoginActions) {
             verticalArrangement = Arrangement.Center,
         ) {
             Spacer(Modifier.height(32.dp))
-            Icon(
-                Icons.Rounded.Videocam,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(72.dp),
-            )
+            AppLogo(Modifier.size(112.dp))
             Spacer(Modifier.height(12.dp))
             Text("Blink Cam", style = MaterialTheme.typography.headlineMedium)
             Text(
@@ -108,8 +112,25 @@ fun LoginContent(state: LoginUiState, vm: LoginActions) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                val context = LocalContext.current
+                TextButton(
+                    onClick = { openUrl(context, DABOPRINT3D_YOUTUBE_URL) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Un progetto DaboPrint3D · canale YouTube", style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
+    }
+}
+
+/** Logo dell'app: le stesse due immagini dell'icona adattiva, ritagliate a cerchio. */
+@Composable
+fun AppLogo(modifier: Modifier = Modifier) {
+    Box(modifier.clip(CircleShape), contentAlignment = Alignment.Center) {
+        // L'icona adattiva è 108x108 con la parte visibile nei 72 centrali: si ingrandisce di 1,5x.
+        Image(painterResource(R.drawable.ic_launcher_background), null, Modifier.fillMaxSize().scale(1.5f))
+        Image(painterResource(R.drawable.ic_launcher_foreground), "Blink Cam", Modifier.fillMaxSize().scale(1.5f))
     }
 }
 

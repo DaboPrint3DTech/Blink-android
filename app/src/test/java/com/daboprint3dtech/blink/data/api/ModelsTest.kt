@@ -32,6 +32,8 @@ class ModelsTest {
         assertTrue(giardino.isLowBattery)
         assertFalse(giardino.motionEnabled)
 
+        assertTrue(ingresso.copy(status = "ok").isOnline) // stati sconosciuti non escludono la telecamera
+        assertTrue(ingresso.copy(status = null).isOnline)
         assertEquals(DeviceKind.MINI, home.camera("mini-5001")!!.kind)
         assertEquals(DeviceKind.DOORBELL, home.camera("doorbell-6001")!!.kind)
         assertEquals(listOf("camera-4001", "camera-4002"), home.camerasOf(2001).map { it.key })

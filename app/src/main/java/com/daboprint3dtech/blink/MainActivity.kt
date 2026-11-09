@@ -17,7 +17,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val container = (application as BlinkApp).container
-        val foregroundRefresh = ForegroundAutoRefresh(container.auth, container.autoRefreshStore, container.autoRefreshEngine)
+        val foregroundRefresh = ForegroundAutoRefresh(
+            container.auth,
+            container.autoRefreshStore,
+            container.autoRefreshEngine,
+            container.refreshScheduler,
+        )
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) { foregroundRefresh.run() }
         }

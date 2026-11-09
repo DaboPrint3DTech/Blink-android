@@ -18,6 +18,8 @@ import com.daboprint3dtech.blink.ui.components.RemoteImageLoader
 import com.daboprint3dtech.blink.work.AutoRefreshEngine
 import com.daboprint3dtech.blink.work.RefreshScheduler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -38,6 +40,12 @@ class AppContainer(context: Context) {
     val refreshScheduler = RefreshScheduler(context)
     val autoRefreshEngine = AutoRefreshEngine(repository, autoRefreshStore)
     val imageLoader = RemoteImageLoader(repository)
+
+    /**
+     * Esegue un'operazione nello scope dell'app: continua anche se l'utente chiude la schermata
+     * che l'ha avviata (es. scatto di più miniature).
+     */
+    fun <T> launchDetached(block: suspend () -> T): Deferred<T> = appScope.async { block() }
 
     /** Salva le impostazioni e riprogramma il lavoro in background. */
     suspend fun updateAutoRefresh(transform: (AutoRefreshSettings) -> AutoRefreshSettings): AutoRefreshSettings {

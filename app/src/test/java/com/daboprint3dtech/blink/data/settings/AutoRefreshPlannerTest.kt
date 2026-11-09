@@ -86,6 +86,20 @@ class AutoRefreshPlannerTest {
     }
 
     @Test
+    fun `orario miniatura nel futuro viene ignorato`() {
+        // Es. orologio del telefono indietro o formato inatteso: la telecamera non deve restare "mai scaduta".
+        val future = camera(1, null).copy(thumbnailPath = (now.epochSecond + 3 * 3600).toString())
+        val plan = AutoRefreshPlanner.plan(home(future), enabled, emptyMap(), now, zone)
+        assertEquals(1, plan.due.size)
+    }
+
+    @Test
+    fun `telecamere non scadute sono elencate`() {
+        val plan = AutoRefreshPlanner.plan(home(camera(1, 45), camera(2, 10)), enabled, emptyMap(), now, zone)
+        assertEquals(mapOf(2L to now.plus(Duration.ofMinutes(20))), plan.notDue.mapKeys { it.key.id })
+    }
+
+    @Test
     fun `miniatura sconosciuta va aggiornata subito`() {
         val plan = AutoRefreshPlanner.plan(home(camera(1, null)), enabled, emptyMap(), now, zone)
         assertEquals(1, plan.due.size)

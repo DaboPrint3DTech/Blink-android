@@ -96,7 +96,7 @@ class CameraViewModel(private val container: AppContainer, private val cameraKey
     fun snapshot() {
         val camera = camera() ?: return
         viewModelScope.launch {
-            when (val r = repo.snapshot(camera)) {
+            when (val r = container.launchDetached { repo.snapshot(camera) }.await()) {
                 SnapshotResult.Updated -> _messages.send("Miniatura aggiornata")
                 SnapshotResult.NotChanged -> _messages.send("Comando inviato, la miniatura arriverà a breve")
                 is SnapshotResult.Failed -> _messages.send(r.error.userMessage())

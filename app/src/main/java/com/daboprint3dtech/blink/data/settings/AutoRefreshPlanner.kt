@@ -19,6 +19,8 @@ data class RefreshPlan(
     val skipped: Map<BlinkCamera, SkipReason>,
     /** Prossimo controllo necessario, null se l'aggiornamento automatico non ha nulla da fare. */
     val nextRunAt: Instant?,
+    /** Telecamere incluse ma non ancora scadute, con la loro prossima scadenza. */
+    val notDue: Map<BlinkCamera, Instant> = emptyMap(),
 )
 
 /**
@@ -36,11 +38,23 @@ object AutoRefreshPlanner {
     /** Ricontrollo quando nessuna telecamera è idonea solo per via dello stato armato/disarmato. */
     val ARM_RECHECK: Duration = Duration.ofMinutes(15)
 
-    fun lastRefresh(camera: BlinkCamera, attempts: Map<String, Instant>): Instant? =
-        listOfNotNull(camera.thumbnailTime, attempts[camera.key]).maxOrNull()
+    /** Oltre questo margine un orario "nel futuro" viene ignorato (orologi sfasati o formato inatteso). */
+    val CLOCK_SKEW: Duration = Duration.ofMinutes(5)
 
-    fun nextDueAt(camera: BlinkCamera, settings: AutoRefreshSettings, attempts: Map<String, Instant>): Instant {
-        val last = lastRefresh(camera, attempts) ?: return Instant.EPOCH
+    fun lastRefresh(camera: BlinkCamera, attempts: Map<String, Instant>, now: Instant = Instant.now()): Instant? {
+        val limit = now.plus(CLOCK_SKEW)
+        return listOfNotNull(camera.thumbnailTime, attempts[camera.key])
+            .filter { !it.isAfter(limit) }
+            .maxOrNull()
+    }
+
+    fun nextDueAt(
+        camera: BlinkCamera,
+        settings: AutoRefreshSettings,
+        attempts: Map<String, Instant>,
+        now: Instant = Instant.now(),
+    ): Instant {
+        val last = lastRefresh(camera, attempts, now) ?: return Instant.EPOCH
         return last.plus(Duration.ofMinutes(settings.intervalFor(camera.key).toLong()))
     }
 
@@ -95,10 +109,11 @@ object AutoRefreshPlanner {
 
         val due = mutableListOf<BlinkCamera>()
         val skipped = linkedMapOf<BlinkCamera, SkipReason>()
+        val notDue = linkedMapOf<BlinkCamera, Instant>()
         val nextTimes = mutableListOf<Instant>()
         val threshold = now.plus(DUE_TOLERANCE)
         for (camera in eligible) {
-            val dueAt = nextDueAt(camera, settings, attempts)
+            val dueAt = nextDueAt(camera, settings, attempts, now)
             if (!dueAt.isAfter(threshold)) {
                 when {
                     !camera.isOnline -> skipped[camera] = SkipReason.OFFLINE
@@ -108,6 +123,7 @@ object AutoRefreshPlanner {
                 // Dopo questo giro il prossimo turno della telecamera è tra un intervallo.
                 nextTimes += now.plus(Duration.ofMinutes(settings.intervalFor(camera.key).toLong()))
             } else {
+                notDue[camera] = dueAt
                 nextTimes += dueAt
             }
         }
@@ -116,6 +132,6 @@ object AutoRefreshPlanner {
             next = minOf(next, now.plus(ARM_RECHECK))
         }
         next = next?.let { nextWindowInstant(settings, it, zone) }
-        return RefreshPlan(due, skipped, next)
+        return RefreshPlan(due, skipped, next, notDue)
     }
 }

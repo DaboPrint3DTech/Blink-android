@@ -26,6 +26,7 @@ data class SettingsUiState(
     val nextRunAt: Instant? = null,
     val email: String? = null,
     val runningNow: Boolean = false,
+    val attempts: Map<String, Instant> = emptyMap(),
 )
 
 class SettingsViewModel(private val container: AppContainer) : ViewModel() {
@@ -37,10 +38,11 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
         container.autoRefreshStore.settings,
         container.repository.homescreen,
         combine(container.autoRefreshEngine.lastRun, container.autoRefreshEngine.nextRunAt) { a, b -> a to b },
-        container.auth.state,
+        combine(container.auth.state, container.autoRefreshStore.lastAttempts) { a, b -> a to b },
         runningNow,
-    ) { settings, home, (lastRun, next), auth, running ->
+    ) { settings, home, (lastRun, next), (auth, attempts), running ->
         SettingsUiState(
+            attempts = attempts,
             settings = settings,
             cameras = home?.cameras.orEmpty(),
             lastRun = lastRun,
@@ -70,17 +72,24 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
         runningNow.value = true
         viewModelScope.launch {
             try {
-                val settings = container.autoRefreshStore.current()
-                val cameras = container.repository.refresh().cameras.filter { settings.isIncluded(it.key) && it.isOnline }
-                if (cameras.isEmpty()) {
-                    _messages.send("Nessuna telecamera inclusa e online")
-                    return@launch
-                }
-                container.autoRefreshStore.recordAttempts(cameras.map { it.key }, Instant.now())
-                val results = container.repository.snapshot(cameras)
-                val failed = results.values.count { it is SnapshotResult.Failed }
-                _messages.send(if (failed == 0) "Miniature aggiornate" else "$failed miniature non aggiornate")
-                if (settings.enabled) container.refreshScheduler.restart(settings.unmeteredOnly)
+                // Continua anche se si esce dalla schermata.
+                val message = container.launchDetached {
+                    val settings = container.autoRefreshStore.current()
+                    val cameras = container.repository.refresh().cameras.filter { settings.isIncluded(it.key) && it.isOnline }
+                    if (cameras.isEmpty()) return@launchDetached "Nessuna telecamera inclusa e online"
+                    val results = container.repository.snapshot(cameras) { camera ->
+                        container.autoRefreshStore.recordAttempts(listOf(camera.key), Instant.now())
+                    }
+                    if (settings.enabled) container.refreshScheduler.restart(settings.unmeteredOnly)
+                    val failed = cameras.filter { results[it.key] is SnapshotResult.Failed }.map { it.name }
+                    val waiting = results.count { it.value is SnapshotResult.NotChanged }
+                    when {
+                        failed.isNotEmpty() -> "Non aggiornate: ${failed.joinToString()}"
+                        waiting > 0 -> "Comandi inviati a ${cameras.size} telecamere, $waiting miniature in arrivo"
+                        else -> "${cameras.size} miniature aggiornate"
+                    }
+                }.await()
+                _messages.send(message)
             } catch (e: Exception) {
                 _messages.send(e.userMessage())
             } finally {
