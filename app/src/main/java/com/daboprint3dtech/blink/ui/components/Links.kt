@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
 
-/** Canale YouTube di DaboPrint3D (link alla ricerca: funziona anche se l'handle cambia). */
-const val DABOPRINT3D_YOUTUBE_URL = "https://www.youtube.com/results?search_query=DaboPrint3D"
+/** Canale YouTube di DaboPrint3D. */
+const val DABOPRINT3D_YOUTUBE_URL = "https://www.youtube.com/@daboPrint3d"
 
 fun openUrl(context: Context, url: String) {
     runCatching {
