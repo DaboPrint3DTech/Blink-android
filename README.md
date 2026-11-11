@@ -99,6 +99,37 @@ La build *release* è minificata con R8 e firmata con la chiave di debug, così 
 | `widget` | Widget home screen (Glance) e snapshot su disco che legge |
 | `tile` | Tile delle impostazioni rapide per armare/disarmare |
 
+## Privacy e sicurezza
+
+Per massima trasparenza, ecco esattamente con chi parla l'app e quali garanzie offre.
+
+**Host contattati** — solo i server ufficiali di Blink/Immedia, nessun'altra destinazione:
+
+| Host | Uso |
+|---|---|
+| `api.oauth.blink.com` | Login OAuth e verifica in due passaggi |
+| `rest-prod.immedia-semi.com` | Regione dell'account (tier) |
+| `rest-<regione>.immedia-semi.com` | Telecamere, miniature, clip e comandi |
+
+Non c'è **nessun server intermedio**, **nessuna telemetria**, **nessun tracker** e nessun dominio di terze parti.
+(Gli unici altri link presenti sono il canale YouTube e un riferimento a blinkpy nei commenti: non ricevono dati.)
+
+**Garanzie** (verificabili nel codice):
+
+- Email e password vengono inviate **solo a Blink**, in **HTTPS** con verifica standard del certificato: nessun
+  bypass TLS, nessun traffico in chiaro.
+- La **password non viene mai salvata**: l'app conserva solo i token di accesso, **cifrati con l'Android Keystore**
+  (AES-GCM 256 bit).
+- **Backup disattivato** (`allowBackup=false`): i token non finiscono nei backup cloud né nei trasferimenti tra dispositivi.
+- **Permessi minimi**: Internet, stato rete, notifiche (opzionali) ed esclusione dall'ottimizzazione batteria (opzionale).
+- Codice **open source**: chiunque può verificare tutto quanto sopra.
+
+**Da sapere:**
+
+- L'app si identifica verso Blink come client iOS (per compatibilità con l'API): è il motivo per cui Blink invia
+  l'email "nuovo dispositivo ha effettuato l'accesso" al primo login.
+- Essendo API non ufficiali, l'uso è a proprio rischio e dovrebbe rispettare i termini di servizio di Blink/Amazon.
+
 ## Limiti noti
 
 - **API non ufficiali**: l'app usa le stesse API dell'app Blink (documentate dal progetto open source
